@@ -1,9 +1,10 @@
 const express = require("express");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
 const cors = require("cors");
 const port = process.env.PORT || 5000;
 
@@ -11,7 +12,7 @@ const port = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173","http://localhost:5174"],
     credentials: true,
   })
 );
@@ -57,6 +58,9 @@ async function run() {
     const upzila = client.db("bloodDonationDB").collection("upazi");
     const usersCollection = client.db("bloodDonationDB").collection("users");
     const donationRequestCollection = client.db("bloodDonationDB").collection("donationRequest");
+    const blogCollection = client.db("bloodDonationDB").collection("blog");
+    const paymentCollection = client.db("bloodDonationDB").collection("payment");
+
 
 
 
@@ -91,6 +95,8 @@ async function run() {
     //   app.post('/api/v1/logout', async(req, res) => {
     //     res.clearCookie('token', {maxAge: 0})
     //     })
+
+
 
     ////// users collections
 
@@ -133,6 +139,57 @@ async function run() {
       res.send(result);
     });
 
+    app.put('/userRole/:id', async(req, res) => {
+       const id =  req.params.id
+       const role = req.body
+   
+       console.log(role.roles);
+
+
+       const filter = { _id: new ObjectId(id)};
+       const updateDoc = {
+        $set: {
+         ...role 
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      console.log(result);
+      res.send(result);
+    })
+
+    
+    app.put('/userBlock/:id', async(req, res) => {
+       const id =  req.params.id
+       const status = req.body
+       const filter = { _id: new ObjectId(id)};
+       const updateDoc = {
+        $set: {
+         ...status
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      console.log(result);
+      res.send(result);
+    })
+
+    app.put('/userUnBlock/:id', async(req, res) => {
+       const id =  req.params.id
+       const status = req.body
+       const filter = { _id: new ObjectId(id)};
+       const updateDoc = {
+        $set: {
+         ...status
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      console.log(result);
+      res.send(result);
+    })
+
+
+
+
+
     //////// donation requst 
 
     app.post('/donationRequest', async(req, res) => {
@@ -141,6 +198,141 @@ async function run() {
         res.send(result)
     })
 
+    app.get('/donationRequest/:email', async(req, res) => {
+        const email = req.params.email
+        console.log("88888888888888",email);
+        const query = {requesterEmail: email}
+        const result = await donationRequestCollection.find(query).toArray()
+        console.log(result);
+        res.send(result)
+    })
+
+    app.put('/donationRequest/:id', async(req, res) => {
+        const id = req.params.id
+        const update = req.body
+        const filter = { _id: new ObjectId(id)}
+        const updateDoc = {
+            $set: {
+              ...update
+            },
+          };
+        const result = await donationRequestCollection.updateOne(filter, updateDoc)
+        console.log(result);
+        res.send(result)
+    })
+
+    app.delete('/donationRequest/:id', async(req, res) => {
+        const id = req.params.id
+        const query = { _id: new ObjectId(id)}
+        const result = await donationRequestCollection.deleteOne(query)
+        console.log(result);
+        res.send(result)
+    })
+
+
+    app.get('/createDonationUpdate/:id', async(req, res) => {
+        const id = req.params.id
+        const query = { _id: new ObjectId(id)}
+        const result = await donationRequestCollection.findOne(query)
+        console.log(result);
+        res.send(result)
+    })
+
+    app.get('/donationRequest', async(req, res) => {
+      const result = await donationRequestCollection.find().toArray()
+      res.send(result)
+  })
+
+
+  app.get('/detailsDonationRequest/:id', async(req, res) => {
+    const id = req.params.id
+    const query = { _id: new ObjectId(id)}
+    const result = await donationRequestCollection.findOne(query)
+    console.log(result);
+    res.send(result)
+  })
+
+  app.put('/donationRequest/:id', async(req, res) => {
+    const id =  req.params.id
+    const status = req.body
+    const filter = { _id: new ObjectId(id)};
+    const updateDoc = {
+     $set: {
+      ...status
+     },
+   };
+   const result = await donationRequestCollection.updateOne(filter, updateDoc);
+   console.log(result);
+   res.send(result);
+ })
+
+
+  //////bologe collection 
+
+  app.post('/blog', async (req, res) => {
+    const blog = req.body; 
+    const result = await blogCollection.insertOne(blog)
+    res.send(result)
+  })
+
+  app.get('/blog', async (req, res) => {
+    const result = await blogCollection.find().toArray()
+    res.send(result)
+  })
+
+  app.delete('/blog/:id',  async (req, res) => {
+    const id = req.params.id
+    const query = { _id: new ObjectId(id)}
+    const result = await blogCollection.deleteOne(query)
+    res.send(result)
+  })
+
+  app.put('/blog/:id', async(req, res) => {
+    const id =  req.params.id
+    const status = req.body
+    const filter = { _id: new ObjectId(id)};
+    const updateDoc = {
+     $set: {
+      ...status
+     },
+   };
+   const result = await blogCollection.updateOne(filter, updateDoc);
+   console.log(result);
+   res.send(result);
+ })
+
+
+ /////// stripe Payment mathod
+ app.post("/create-payment-intent", async (req, res) => {
+  const { price } = req.body;
+
+  const amount = parseInt(price * 100)
+  console.log(amount);
+  const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: 'usd',
+      payment_method_types: ['card']
+
+  });
+  
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  });
+});
+
+app.post('/payment', async (req,res) => {
+  const payment = req.body
+  const result = await paymentCollection.insertOne(payment)
+  res.send(result)
+})
+
+app.get('/payment', verifyToken, async(req,res) => {
+  console.log(req.user);
+  const amount = await paymentCollection.find().toArray()
+  const totalPrice = amount.reduce((total, price) => total + price.price, 0) 
+  console.log(totalPrice);
+  res.send({price: totalPrice })
+})
 
 
 
