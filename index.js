@@ -12,7 +12,11 @@ const port = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: ["http://localhost:5173","http://localhost:5174"],
+    origin: [
+        "http://localhost:5173","http://localhost:5174",
+        'https://blood-donation-28936.web.app',
+        'https://blood-donation-28936.firebaseapp.com'
+  ],
     credentials: true,
   })
 );
@@ -49,7 +53,7 @@ const verifyToken = async (req, res, next) => {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful
 
 
@@ -186,6 +190,17 @@ async function run() {
       res.send(result);
     })
 
+    app.post('/searchDonor', async (req, res) => {
+      const donor = req.body; 
+      const query = {
+        bloodGroup: donor.bloodGroup,  
+        district: donor.district, 
+        bloodGroup: donor.bloodGroup
+      }
+      const result = await usersCollection.find(query).toArray()
+      res.send(result);
+    })
+
 
 
 
@@ -267,7 +282,7 @@ async function run() {
  })
 
 
-  //////bologe collection 
+  //////blog collection 
 
   app.post('/blog', async (req, res) => {
     const blog = req.body; 
@@ -302,6 +317,18 @@ async function run() {
  })
 
 
+ /////// MY donation Request 
+
+ app.get('/myDonation/:email', async(req, res) => {
+  const email = req.params.email
+  console.log("88888888888888",email);
+  const query = {myDonation: email}
+  const result = await donationRequestCollection.find(query).toArray()
+  console.log(result);
+  res.send(result)
+})
+
+
  /////// stripe Payment mathod
  app.post("/create-payment-intent", async (req, res) => {
   const { price } = req.body;
@@ -334,14 +361,25 @@ app.get('/payment', verifyToken, async(req,res) => {
   res.send({price: totalPrice })
 })
 
+app.get('/payment/:email', async (req, res) => {
+    const email = req.params.email
+    console.log("user email", email);
+    const query = {name: email }
+    const result = await paymentCollection.find(query).toArray()
+    console.log(result);
+    res.send(result)
+})
 
 
 
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+
+
+
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
