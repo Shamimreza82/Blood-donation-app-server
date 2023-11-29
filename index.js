@@ -133,6 +133,7 @@ async function run() {
       const updateDoc = {
         $set: {
           Name: updateProfile.Name, 
+          image:updateProfile.image,
           bloodGroup: updateProfile.bloodGroup, 
           district: updateProfile.district,
           upazilia: updateProfile.upazilia
